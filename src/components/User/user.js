@@ -6,17 +6,22 @@ import block from '../../abis/B_lockItInn.json';
 import CryptoJS from 'crypto-js';
 import Web3 from 'web3';
 import Slide from 'react-reveal/Slide'
+import Image from '../../images/encrypt.png'
+import Lock from '../../images/lock1.jpg'
+import Back from '../../images/back.jpg'
+import Back1 from '../../images/back1.jpg'
+import Back3 from '../../images/back3.png'
 
 var axios = require('axios');
 var ipfsClient = require('ipfs-http-client');
-var ipfs = ipfsClient({ host:'ipfs.infura.io', port: 5001, protocol: 'https', timeout: 20 });
+var ipfs = ipfsClient({ host:'ipfs.infura.io', port: 5001, protocol: 'https'});
 
 class User extends Component{
 
   async componentWillMount(){
     await this.loadWeb3();
     await this.loadBlockchainData();
-  }
+  } 
 
   state={
     title : null,
@@ -38,6 +43,7 @@ class User extends Component{
     super(props);
     this.getData = this.getData.bind(this);
     this.onSubmit2 = this.onSubmit2.bind(this);
+    this.onSubmit = this.onSubmit.bind(this);
   } 
 
   componentDidMount(){
@@ -101,7 +107,7 @@ class User extends Component{
     }
   }
 
-    onSubmit2 = (event) => {
+    async onSubmit2(event){
     console.log("hey there")
     const title = document.getElementById('title').value;
     this.setState({title});
@@ -112,33 +118,32 @@ class User extends Component{
     var encrypted = CryptoJS.AES.encrypt(data, key).toString();
     this.setState({data: encrypted});
     console.log(encrypted);
-    ipfs.add(encrypted, (error,result) => {
-      console.log("ipfs result", result);
-      const Hash = result[0].hash;
-      if(error){
-        console.error(error);
-        return;
-      }
-      console.log(Hash, this.state.title, this.state.contract);
-      this.state.contract.methods._setHash(this.state.title, Hash).send({from: this.state.account})
-    })
+    try{
+      const result = await ipfs.add(encrypted);
+        console.log("ipfs result", result);
+        const Hash = result[0].hash;
+        console.log(Hash, this.state.title, this.state.contract);
+        this.state.contract.methods._setHash(this.state.title, Hash).send({from: this.state.account})
+    }catch(err){
+      console.error(err);
+    }
   }
 
-  onSubmit = (event) => {
+  async onSubmit(event){
     const title = document.getElementById('title').value;
     this.setState({title});
     console.log("submitting the form...");
     event.preventDefault();
-    ipfs.add(this.state.data, (error,result) => {
+    try{
+      const result = await ipfs.add(this.state.data)
+      if(!result) throw new Error("uploading photoNearFileContent failed");
       console.log("ipfs result", result);
       const Hash = result[0].hash;
-      if(error){
-        console.error(error);
-        return;
-      }
-      console.log(Hash);
+      console.log(Hash, this.state.title, this.state.contract);
       this.state.contract.methods._setHash(this.state.title, Hash).send({from: this.state.account})
-    })
+    }catch (err){
+      console.error(err);
+    }
   }
 
   toggleSecureData = () => {
@@ -204,20 +209,20 @@ class User extends Component{
         <div className="row mt-5">
           <div className="col">
              <div className="input-wrapper">
-                <input className="py-3 px-2 " name="title" id="title" type="text" style={{width:"100%"}} placeholder="Enter key"></input>
+                <input className="py-3 px-2 input-user " name="title" id="title" type="text" style={{width:"100%"}} placeholder="Enter key"></input>
              </div>
           </div>
         </div>
         <div className="row mt-5">
             <div className="col">
-              <button className="btn btn-block btn-outline-success" onClick={this.toggleData}>
+              <button className="btn btn-block btn-primary" onClick={this.toggleData}>
                 Enter data
               </button>
             </div>
         </div>
         <div className="row mt-5">
             <div className="col">
-              <button className="btn btn-block btn-outline-success" onClick={this.toggleFile}>
+              <button className="btn btn-block btn-primary" onClick={this.toggleFile}>
                 Choose File
               </button>
             </div>
@@ -226,7 +231,8 @@ class User extends Component{
         <div className="row mt-5">
           <div className="col">
             <div className="input-wrapper">
-              <textarea className="py-3 px-2" type="text" rows="6"  style={{width:"100%"}} id="data" placeholder="Enter data"></textarea>
+              <textarea 
+              className="input-user py-3 px-2" type="text" rows="6"  style={{width:"100%"}} id="data" placeholder="Enter data"></textarea>
             </div>
           </div>
         </div> : ''}
@@ -245,14 +251,16 @@ class User extends Component{
           <div className="col">
             <button className="btn btn-outline-danger py-3 px-2 btn-block" onClick={this.onSubmit}>Secure</button>
           </div>
-        </div> : 
+        </div> : ''}
+
+        {this.state.storeData ?
 
         <div className="row mt-4">
           <div className="col">
             <button className="btn btn-outline-danger py-3 px-2 btn-block" onClick={this.onSubmit2}>Secure</button>
           </div>
-        </div>
-      }
+        </div> : ''}
+      
         </Slide>
       )
       
@@ -267,7 +275,7 @@ class User extends Component{
           <div className="row mt-5">
             <div className="col">
                <div className="input-wrapper">
-                <input className="py-3 px-2 "  name="cp" id="cp" type="text" style={{width:"100%"}} placeholder="Enter key"></input>
+                <input className="py-3 px-2 input-user"  name="cp" id="cp" type="text" style={{width:"100%"}} placeholder="Enter key"></input>
               </div>
             </div>
           </div>
@@ -280,7 +288,7 @@ class User extends Component{
             <div className="row mt-5">
               <div className="col">
                 <div className="input-wrapper">
-                  <textarea className="py-3 px-2" type="text" rows={10} readOnly value={this.state.dataValue} style={{width:"100%"}}></textarea>
+                  <textarea className="py-3 px-2 input-user" type="text" rows={10} readOnly value={this.state.dataValue} style={{width:"100%"}}></textarea>
                 </div>
               </div>
             </div>
@@ -293,23 +301,96 @@ class User extends Component{
 
     return(
       <>
-        <section className="p-5 sec-user">
-          <div className="container-fluid">
-            <div className='row'>
-                <div className="col-12 col-md-6 text-center">
-                  <div className="card p-4 card-hover" onClick={this.toggleSecureData}>
-                  <h1>Secure New Data</h1>
-                  </div>
-                  {secureData}
-                </div>
-              
-                <div className="col-12 col-md-6 text-center">
-                  <div className="card p-4 card-hover" onClick={this.toggleGetData}>
-                <h1>Get Existing Data</h1>
-                </div>
-                {getData}
+
+        <section className="p-5 sec-user" style={{
+          background: `url(${Back3})`,
+          backgroundRepeat:"no-repeat",
+          backgroundSize:"cover",
+          zIndex:"-2"
+        }}>
+          <div className="container">
+            <div className="row">
+              <div className="col-12 col-md-6">
+                <div className="button-wrapper">
+                    <div className="button">
+                        <div className="button-header mb-4 text-center" style={{fontWeight:"100",fontSize:"40px"}}>
+                          Secure Data
+                        </div>
+                        <div className="button-image">
+                        <i className="fa fa-lock fa-5x"></i>
+                         
+                        </div>
+                        <div className="button-text">
+                          now secure your data as you will not even believ iy is posisbdnnd
+                        </div>
+                        <div className="button-button text-center mt-3">
+                          <button className="btn btn-primary mx-auto btn-block" onClick={this.toggleSecureData} style={{width:"60%"}}>Secure</button>
+                        </div>
+                    </div>
+                    {secureData}
+                </div>   
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="button-wrapper">
+                    <div className="button">
+                        <div className="button-header mb-4 text-center" style={{fontWeight:"100",fontSize:"40px"}}>
+                          Get Data
+                        </div>
+                        <div className="button-image">
+                        <i className="fa fa-file fa-5x"></i>
+                        </div>
+                        <div className="button-text">
+                          now secure your data as you will not even believ iy is posisbdnnd
+                        </div>
+                        <div className="button-button text-center mt-3">
+                          <button className="btn btn-primary mx-auto btn-block" onClick={this.toggleGetData} style={{width:"60%"}}>Secure</button>
+                        </div>
+                    </div>
+                    {getData}
+                </div>   
               </div>
             </div>
+            <div className="row mt-5">
+            <div className="col-12 col-md-6">
+                <div className="button-wrapper">
+                    <div className="button">
+                        <div className="button-header mb-4 text-center" style={{fontWeight:"100",fontSize:"40px"}}>
+                          Share
+                        </div>
+                        <div className="button-image">
+                        <i className="fa fa-share-alt fa-5x"></i>
+                        </div>
+                        <div className="button-text">
+                          now secure your data as you will not even believ iy is posisbdnnd
+                        </div>
+                        <div className="button-button text-center mt-3">
+                          <button className="btn btn-primary mx-auto btn-block"  style={{width:"60%"}}>Secure</button>
+                        </div>
+                    </div>
+                    
+                </div>   
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="button-wrapper">
+                    <div className="button">
+                        <div className="button-header mb-4 text-center" style={{fontWeight:"100",fontSize:"40px"}}>
+                          Escrow
+                        </div>
+                        <div className="button-image">
+                          <i className="fa fa-arrow-right fa-5x"></i>
+                        </div>
+                        <div className="button-text">
+                          now secure your data as you will not even believ iy is posisbdnnd
+                        </div>
+                        <div className="button-button text-center mt-3">
+                          <button className="btn btn-primary mx-auto btn-block"  style={{width:"60%"}}>Secure</button>
+                        </div>
+                    </div>
+                    
+                </div>   
+              </div>
+            </div>
+            
           </div>
         </section>
       </>
